@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>重积分可视化助手 · 数智融合</title>
+<script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  :root{
+    --bg:#0d1117;--surface:#161b22;--surface2:#21262d;--border:#30363d;
+    --accent:#58a6ff;--green:#3fb950;--purple:#bc8cff;--orange:#ff7b72;
+    --text:#e6edf3;--muted:#8b949e;
+  }
+  body{font-family:'Microsoft YaHei',sans-serif;background:var(--bg);color:var(--text);height:100vh;display:flex;flex-direction:column;overflow:hidden}
+  .header{background:var(--surface);border-bottom:1px solid var(--border);padding:10px 20px;display:flex;align-items:center;gap:12px;flex-shrink:0}
+  .logo-box{width:36px;height:36px;background:linear-gradient(135deg,#1f6feb,#bc8cff);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700;color:#fff;flex-shrink:0}
+  .logo-title{font-size:16px;font-weight:700}
+  .logo-sub{font-size:11px;color:var(--muted);margin-top:1px}
+  .header-badge{margin-left:auto;font-size:11px;background:rgba(88,166,255,.15);border:1px solid rgba(88,166,255,.3);color:var(--accent);padding:3px 12px;border-radius:20px}
+  .main{display:flex;flex:1;overflow:hidden}
+  .left{width:300px;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow-y:auto;flex-shrink:0}
+  .section{padding:14px 16px;border-bottom:1px solid var(--border)}
+  .sec-title{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;margin-bottom:10px}
+  .upload-area{border:1.5px dashed var(--border);border-radius:10px;padding:18px;text-align:center;cursor:pointer;transition:.2s}
+  .upload-area:hover{border-color:var(--accent);background:rgba(88,166,255,.05)}
+  .upload-area.has-img{border-style:solid;border-color:var(--green)}
+  .upload-icon{font-size:30px;margin-bottom:6px}
+  .upload-hint{font-size:12px;color:var(--muted)}
+  #preview{width:100%;border-radius:8px;margin-top:10px;display:none;max-height:160px;object-fit:contain}
+  #file-inp{display:none}
+  .field-label{font-size:11px;color:var(--muted);margin-bottom:5px}
+  .field-input{width:100%;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:8px 10px;color:var(--text);font-size:12px;font-family:monospace;outline:none;transition:.2s}
+  .field-input:focus{border-color:var(--accent)}
+  .field-note{font-size:10px;color:var(--muted);margin-top:4px}
+  .btn-primary{width:100%;background:linear-gradient(135deg,#1f6feb,#388bfd);border:none;border-radius:8px;padding:11px;color:#fff;font-size:13px;font-weight:600;cursor:pointer;transition:.2s;font-family:'Microsoft YaHei',sans-serif;display:flex;align-items:center;justify-content:center;gap:6px;margin-top:10px}
+  .btn-primary:hover{opacity:.9}
+  .btn-primary:disabled{opacity:.45;cursor:not-allowed}
+  .ex-item{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 12px;cursor:pointer;transition:.15s;margin-bottom:6px}
+  .ex-item:hover{border-color:var(--accent)}
+  .ex-item:last-child{margin-bottom:0}
+  .ex-tag{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:3px}
+  .ex-math{font-family:monospace;color:var(--purple);font-size:12px;line-height:1.5}
+  .ex-desc{font-size:11px;color:var(--muted);margin-top:3px}
+  .err-bar{background:rgba(255,123,114,.12);border:1px solid rgba(255,123,114,.3);border-radius:8px;padding:9px 12px;font-size:12px;color:var(--orange);margin-top:8px;display:none}
+  .right{flex:1;display:flex;flex-direction:column;overflow:hidden}
+  .tabs{display:flex;background:var(--surface);border-bottom:1px solid var(--border);padding:0 16px;flex-shrink:0}
+  .tab{padding:10px 16px;font-size:12px;cursor:pointer;border-bottom:2px solid transparent;color:var(--muted);transition:.15s;white-space:nowrap}
+  .tab.on{color:var(--accent);border-bottom-color:var(--accent)}
+  .pane{flex:1;display:none;overflow:hidden;position:relative}
+  .pane.on{display:flex;flex-direction:column}
+  #graph-wrap{flex:1;position:relative;min-height:0}
+  #plotly-div{width:100%;height:100%}
+  .empty-state{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;color:var(--muted);pointer-events:none}
+  .empty-icon{font-size:56px;opacity:.25}
+  .empty-text{font-size:14px;text-align:center;line-height:1.7;opacity:.6}
+  .loading-mask{position:absolute;inset:0;background:rgba(13,17,23,.88);display:none;align-items:center;justify-content:center;flex-direction:column;gap:14px;z-index:10}
+  .spinner{width:38px;height:38px;border:3px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .loading-text{font-size:13px;color:var(--muted)}
+  .graph-ctrl{background:var(--surface);border-top:1px solid var(--border);padding:8px 16px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;flex-shrink:0}
+  .ctrl-btn{background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:5px 12px;color:var(--text);font-size:11px;cursor:pointer;transition:.15s;font-family:'Microsoft YaHei',sans-serif}
+  .ctrl-btn:hover,.ctrl-btn.on{border-color:var(--accent);color:var(--accent);background:rgba(88,166,255,.1)}
+  .sep{width:1px;height:20px;background:var(--border)}
+  .op-ctrl{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--muted)}
+  .op-ctrl input{width:80px;accent-color:var(--accent)}
+  .parse-body{flex:1;padding:16px;overflow-y:auto;display:flex;flex-direction:column;gap:12px}
+  .card{background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:14px 16px}
+  .card-title{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px}
+  .mono{font-family:monospace;font-size:13px;color:var(--purple);background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:8px 12px;line-height:1.8}
+  .bound-row{display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--border)}
+  .bound-row:last-child{border-bottom:none}
+  .bvar{font-family:monospace;color:var(--orange);font-size:13px;min-width:40px}
+  .brange{font-family:monospace;color:var(--green);font-size:12px}
+  .coord-pill{display:inline-flex;align-items:center;background:rgba(188,140,255,.15);border:1px solid rgba(188,140,255,.3);color:var(--purple);font-size:11px;padding:3px 12px;border-radius:20px}
+  .region-desc{font-size:13px;color:var(--text);line-height:1.7;margin-top:10px}
+  .result-val{font-family:monospace;color:var(--green);font-size:15px;margin-top:8px}
+  .steps-body{flex:1;padding:16px;overflow-y:auto}
+  .step-block{margin-bottom:16px}
+  .step-num{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;background:rgba(88,166,255,.2);color:var(--accent);font-size:12px;font-weight:700;margin-right:8px;flex-shrink:0}
+  .step-title{font-size:13px;font-weight:600;color:var(--text);display:flex;align-items:center;margin-bottom:6px}
+  .step-content{font-size:12px;color:var(--muted);line-height:1.8;padding-left:30px}
+  .statusbar{background:var(--surface);border-top:1px solid var(--border);padding:5px 16px;display:flex;align-items:center;gap:8px;flex-shrink:0}
+  .sdot{width:6px;height:6px;border-radius:50%;background:var(--green);flex-shrink:0}
+  .sdot.busy{background:var(--orange);animation:pulse 1s infinite}
+  .sdot.err{background:var(--orange)}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+  .stext{font-size:11px;color:var(--muted);font-family:monospace}
+</style>
+</head>
+<body>
+<div class="header">
+  <div class="logo-box">∫∫</div>
+  <div>
+    <div class="logo-title">重积分可视化助手</div>
+    <div class="logo-sub">数智融合的数学发现之旅 · 工科数学分析</div>
+  </div>
+  <div class="header-badge">HTML5 · 选题1+5</div>
+</div>
+<div class="main">
+  <div class="left">
+    <div class="section">
+      <div class="sec-title">📷 上传题目图片</div>
+      <div class="upload-area" id="upload-area" onclick="document.getElementById('file-inp').click()">
+        <div class="upload-icon">📷</div>
+        <div style="font-size:13px;font-weight:600;margin-bottom:4px">点击上传 / 拍照</div>
+        <div class="upload-hint">支持 JPG、PNG 格式</div>
+        <img id="preview" src="" alt="预览图">
+      </div>
+      <input type="file" id="file-inp" accept="image/*" capture="environment">
+    </div>
+    <div class="section">
+      <div class="sec-title">🔑 Claude API Key</div>
+      <div class="field-label">粘贴你的 API Key（sk-ant-...）</div>
+      <input class="field-input" type="password" id="api-key" placeholder="sk-ant-api03-...">
+      <div class="field-note">⚠ 仅存在本地浏览器，不上传任何服务器</div>
+      <div class="err-bar" id="err-bar"></div>
+      <button class="btn-primary" id="analyze-btn" onclick="doAnalyze()">
+        <span>🔍</span> 识别题目并生成3D图
+      </button>
+    </div>
+    <div class="section" style="flex:1">
+      <div class="sec-title">📚 内置示例（点击体验）</div>
+      <div class="ex-item" onclick="loadEx(0)">
+        <div class="ex-tag">二重积分 · 极坐标</div>
+        <div class="ex-math">∬_D (x²+y²) dA</div>
+        <div class="ex-desc">D: x²+y²≤1，第一象限扇形</div>
+      </div>
+      <div class="ex-item" onclick="loadEx(1)">
+        <div class="ex-tag">二重积分 · 三角形区域</div>
+        <div class="ex-math">∬_D xy dA</div>
+        <div class="ex-desc">D: 0≤x≤1，0≤y≤x</div>
+      </div>
+      <div class="ex-item" onclick="loadEx(2)">
+        <div class="ex-tag">三重积分 · 球坐标</div>
+        <div class="ex-math">∭_Ω z dV</div>
+        <div class="ex-desc">Ω: x²+y²+z²≤1，z≥0 上半球</div>
+      </div>
+      <div class="ex-item" onclick="loadEx(3)">
+        <div class="ex-tag">二重积分 · 抛物线围成</div>
+        <div class="ex-math">∬_D (x+y) dA</div>
+        <div class="ex-desc">D: y=x² 与 y=√x 围成区域</div>
+      </div>
+    </div>
+  </div>
+  <div class="right">
+    <div class="tabs">
+      <div class="tab on" onclick="switchTab('graph')">📊 3D 积分区域图</div>
+      <div class="tab" onclick="switchTab('parse')">📋 识别结果</div>
+      <div class="tab" onclick="switchTab('steps')">📐 解题思路</div>
+    </div>
+    <div class="pane on" id="pane-graph">
+      <div id="graph-wrap">
+        <div id="plotly-div"></div>
+        <div class="empty-state" id="empty-state">
+          <div class="empty-icon">∭</div>
+          <div class="empty-text">点击左侧示例题目<br>或上传图片识别后<br>自动生成3D积分区域立体图</div>
+        </div>
+        <div class="loading-mask" id="loading-mask">
+          <div class="spinner"></div>
+          <div class="loading-text" id="loading-text">正在生成3D图形...</div>
+        </div>
+      </div>
+      <div class="graph-ctrl" id="graph-ctrl" style="display:none">
+        <button class="ctrl-btn on" id="cb-surf" onclick="toggleLayer('surf')">曲面</button>
+        <button class="ctrl-btn on" id="cb-floor" onclick="toggleLayer('floor')">底面区域</button>
+        <button class="ctrl-btn on" id="cb-bound" onclick="toggleLayer('bound')">边界曲线</button>
+        <div class="sep"></div>
+        <div class="op-ctrl">透明度 <input type="range" min="0.1" max="1" step="0.1" value="0.7" id="op-slider" oninput="setOpacity(this.value)"></div>
+        <div class="sep"></div>
+        <button class="ctrl-btn" onclick="resetCam()">重置视角</button>
+      </div>
+    </div>
+    <div class="pane" id="pane-parse">
+      <div class="parse-body" id="parse-body">
+        <div style="color:var(--muted);font-size:13px;text-align:center;margin-top:60px">识别结果将显示在这里</div>
+      </div>
+    </div>
+    <div class="pane" id="pane-steps">
+      <div class="steps-body" id="steps-body">
+        <div style="color:var(--muted);font-size:13px;text-align:center;margin-top:60px">解题思路将显示在这里</div>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="statusbar">
+  <div class="sdot" id="sdot"></div>
+  <div class="stext" id="stext">就绪 · 选择示例或上传图片开始</div>
+</div>
+<script>
+// ── 配置：部署到 Vercel 后这里自动用相对路径，本地打开也能用示例 ──
+const API_ENDPOINT = '/api/analyze';
+
+const EXAMPLES = [
+  {
+    label:'二重积分 · 极坐标扇形区域',
+    integral_type:'double',expression:'x²+y²',variables:['x','y'],
+    bounds:{outer:{var:'r',lower:'0',upper:'1'},inner:{var:'θ',lower:'0',upper:'π/2'}},
+    region_description:'在极坐标下，积分区域 D 为单位圆盘在第一象限的扇形部分，即 0≤r≤1，0≤θ≤π/2。',
+    coordinate_system:'polar',result_hint:'= π/8',
+    steps:[
+      {t:'识别坐标系',c:'被积函数 f(x,y)=x²+y²=r²（极坐标），积分区域为圆形，优先选择极坐标。'},
+      {t:'转化为极坐标',c:'令 x=rcosθ，y=rsinθ，则 dA=r dr dθ，f=r²，区域变为 0≤r≤1，0≤θ≤π/2。'},
+      {t:'建立累次积分',c:'∬_D r² · r dr dθ = ∫₀^(π/2) ∫₀^1 r³ dr dθ'},
+      {t:'逐层积分',c:'先对 r：∫₀^1 r³ dr = 1/4。再对 θ：∫₀^(π/2) (1/4) dθ = π/8。'},
+      {t:'最终结果',c:'∬_D (x²+y²) dA = π/8 ≈ 0.3927'}
+    ]
+  },
+  {
+    label:'二重积分 · 三角形区域',
+    integral_type:'double',expression:'xy',variables:['x','y'],
+    bounds:{outer:{var:'x',lower:'0',upper:'1'},inner:{var:'y',lower:'0',upper:'x'}},
+    region_description:'积分区域 D 由直线 y=0、y=x、x=1 围成的三角形，顶点为 (0,0)、(1,0)、(1,1)。',
+    coordinate_system:'cartesian',result_hint:'= 1/8',
+    steps:[
+      {t:'画出积分区域',c:'D 是三角形，顶点为 O(0,0)、A(1,0)、B(1,1)。'},
+      {t:'确定积分顺序',c:'先对 y（内层）从 0 到 x，再对 x（外层）从 0 到 1。'},
+      {t:'建立累次积分',c:'∬_D xy dA = ∫₀^1 [∫₀^x xy dy] dx'},
+      {t:'计算内层积分',c:'∫₀^x xy dy = x·[y²/2]₀^x = x³/2'},
+      {t:'最终结果',c:'∫₀^1 (x³/2) dx = 1/8 = 0.125'}
+    ]
+  },
+  {
+    label:'三重积分 · 上半球（球坐标）',
+    integral_type:'triple',expression:'z',variables:['x','y','z'],
+    bounds:{outer:{var:'ρ',lower:'0',upper:'1'},middle:{var:'φ',lower:'0',upper:'π/2'},inner:{var:'θ',lower:'0',upper:'2π'}},
+    region_description:'积分区域 Ω 为单位球的上半部分 x²+y²+z²≤1 且 z≥0，球坐标：0≤ρ≤1，0≤φ≤π/2，0≤θ≤2π。',
+    coordinate_system:'spherical',result_hint:'= π/4',
+    steps:[
+      {t:'选择球坐标',c:'Ω 是上半单位球，具有旋转对称性，选球坐标：z=ρcosφ，dV=ρ²sinφ dρ dφ dθ。'},
+      {t:'建立三重积分',c:'∭_Ω z dV = ∫₀^(2π) ∫₀^(π/2) ∫₀^1 ρcosφ·ρ²sinφ dρ dφ dθ'},
+      {t:'分离变量',c:'= [∫₀^(2π) dθ]·[∫₀^(π/2) sinφcosφ dφ]·[∫₀^1 ρ³ dρ]'},
+      {t:'逐项计算',c:'2π × 1/2 × 1/4'},
+      {t:'最终结果',c:'∭_Ω z dV = π/4 ≈ 0.7854'}
+    ]
+  },
+  {
+    label:'二重积分 · 抛物线围成区域',
+    integral_type:'double',expression:'x+y',variables:['x','y'],
+    bounds:{outer:{var:'x',lower:'0',upper:'1'},inner:{var:'y',lower:'x^2',upper:'sqrt(x)'}},
+    region_description:'积分区域 D 由抛物线 y=x² 和 y=√x 围成，两曲线交于 (0,0) 和 (1,1)。',
+    coordinate_system:'cartesian',result_hint:'= 11/20',
+    steps:[
+      {t:'求曲线交点',c:'令 x²=√x，解得交点 (0,0) 和 (1,1)。'},
+      {t:'判断上下曲线',c:'当 0<x<1 时，√x > x²，上界为 √x，下界为 x²。'},
+      {t:'建立累次积分',c:'∫₀^1 [∫_(x²)^(√x) (x+y) dy] dx'},
+      {t:'计算内层',c:'∫_(x²)^(√x) (x+y) dy = x(√x−x²) + (x−x⁴)/2'},
+      {t:'最终结果',c:'∬_D (x+y) dA = 11/20 = 0.55'}
+    ]
+  }
+];
+
+let curData=null, layerOn={surf:true,floor:true,bound:true}, opacity=0.7;
+
+function setStatus(t,type='ok'){
+  document.getElementById('stext').textContent=t;
+  const d=document.getElementById('sdot');
+  d.className='sdot'+(type==='busy'?' busy':type==='err'?' err':'');
+}
+function showErr(msg){
+  const el=document.getElementById('err-bar');
+  el.style.display='block';el.textContent=msg;
+  setTimeout(()=>el.style.display='none',8000);
+}
+function switchTab(name){
+  document.querySelectorAll('.tab').forEach((t,i)=>t.classList.toggle('on',['graph','parse','steps'][i]===name));
+  document.querySelectorAll('.pane').forEach(p=>p.classList.remove('on'));
+  document.getElementById('pane-'+name).classList.add('on');
+  if(name==='graph'&&curData) setTimeout(()=>Plotly.Plots.resize(document.getElementById('plotly-div')),50);
+}
+function showLoading(t){
+  document.getElementById('loading-text').textContent=t||'正在处理...';
+  document.getElementById('loading-mask').style.display='flex';
+}
+function hideLoading(){document.getElementById('loading-mask').style.display='none';}
+
+document.getElementById('file-inp').addEventListener('change',function(e){
+  const f=e.target.files[0];if(!f)return;
+  const r=new FileReader();
+  r.onload=ev=>{
+    const img=document.getElementById('preview');
+    img.src=ev.target.result;img.style.display='block';
+    document.getElementById('upload-area').classList.add('has-img');
+    setStatus('图片已加载，点击"识别题目"按钮');
+  };
+  r.readAsDataURL(f);
+});
+
+async function doAnalyze(){
+  const key=document.getElementById('api-key').value.trim();
+  const img=document.getElementById('preview');
+  if(!key){showErr('请先输入 Claude API Key');return;}
+  if(!img.src||img.style.display==='none'){showErr('请先上传题目图片');return;}
+
+  document.getElementById('analyze-btn').disabled=true;
+  setStatus('正在调用 Claude Vision 识别题目...','busy');
+  showLoading('Claude 正在识别图片中的重积分...');
+
+  const b64=img.src.split(',')[1];
+  const mime=img.src.startsWith('data:image/png')?'image/png':'image/jpeg';
+
+  const prompt=`你是一位大学数学教授，专门处理重积分题目。请识别图片中的重积分题目，严格按以下JSON格式返回（不要任何其他文字，不要markdown格式，直接输出JSON）：
+{"label":"题目简短描述","integral_type":"double或triple","expression":"被积函数（用^表示幂，sqrt()表示根号）","variables":["变量列表"],"bounds":{"outer":{"var":"最外层变量","lower":"下限","upper":"上限"},"middle":{"var":"中层变量仅三重积分","lower":"下限","upper":"上限"},"inner":{"var":"最内层变量","lower":"下限","upper":"上限"}},"region_description":"用中文详细描述积分区域几何形状","coordinate_system":"cartesian或polar或cylindrical或spherical","result_hint":"如能算出写'= 值'否则写空字符串","steps":[{"t":"步骤标题","c":"步骤说明"}]}
+steps包含5-6个解题步骤。对于二重积分bounds只需outer和inner。`;
+
+  try{
+    const res=await fetch(API_ENDPOINT,{
+      method:'POST',
+      headers:{'Content-Type':'application/json','x-api-key':key},
+      body:JSON.stringify({
+        model:'claude-opus-4-5',max_tokens:2000,
+        messages:[{role:'user',content:[
+          {type:'image',source:{type:'base64',media_type:mime,data:b64}},
+          {type:'text',text:prompt}
+        ]}]
+      })
+    });
+    if(!res.ok){const e=await res.json();throw new Error(e.error?.message||'请求失败 '+res.status);}
+    const data=await res.json();
+    const text=data.content.map(c=>c.text||'').join('');
+    const clean=text.replace(/```json|```/g,'').trim();
+    const parsed=JSON.parse(clean);
+    curData=parsed;
+    renderAll(parsed);
+    setStatus('识别成功！已生成3D积分区域图');
+  }catch(err){
+    hideLoading();
+    showErr('识别失败：'+err.message);
+    setStatus('识别失败','err');
+  }
+  document.getElementById('analyze-btn').disabled=false;
+}
+
+function loadEx(i){curData=EXAMPLES[i];renderAll(curData);setStatus('已加载：'+curData.label);}
+
+function renderAll(data){
+  document.getElementById('empty-state').style.display='none';
+  document.getElementById('graph-ctrl').style.display='flex';
+  showLoading('正在生成3D积分区域图...');
+  switchTab('graph');
+  setTimeout(()=>{
+    try{renderGraph(data);}catch(e){console.error(e);}
+    hideLoading();renderParse(data);renderSteps(data);
+  },100);
+}
+
+function renderGraph(data){
+  const cs=data.coordinate_system;
+  if(cs==='polar')drawPolar(data);
+  else if(cs==='spherical')drawSpherical(data);
+  else if(cs==='cylindrical')drawCylindrical(data);
+  else if(data.integral_type==='triple')drawTriple(data);
+  else drawDouble(data);
+}
+
+function getLayout(title){
+  return{
+    paper_bgcolor:'rgba(13,17,23,0)',plot_bgcolor:'rgba(13,17,23,0)',
+    margin:{l:0,r:0,t:36,b:0},
+    title:{text:title||'',font:{color:'#8b949e',size:13,family:'Microsoft YaHei'},x:.5},
+    scene:{
+      bgcolor:'rgba(0,0,0,0)',
+      xaxis:{title:{text:'x',font:{color:'#58a6ff'}},color:'#58a6ff',gridcolor:'#21262d',zerolinecolor:'#30363d',showbackground:true,backgroundcolor:'rgba(31,39,54,0.6)'},
+      yaxis:{title:{text:'y',font:{color:'#3fb950'}},color:'#3fb950',gridcolor:'#21262d',zerolinecolor:'#30363d',showbackground:true,backgroundcolor:'rgba(20,45,30,0.5)'},
+      zaxis:{title:{text:'z',font:{color:'#bc8cff'}},color:'#bc8cff',gridcolor:'#21262d',zerolinecolor:'#30363d',showbackground:true,backgroundcolor:'rgba(35,20,55,0.4)'},
+      camera:{eye:{x:1.6,y:1.4,z:1.2}},aspectmode:'cube'
+    },
+    showlegend:false
+  };
+}
+
+function linspace(a,b,n){const r=[];for(let i=0;i<n;i++)r.push(a+(b-a)*i/(n-1));return r;}
+function safeEval(e){
+  if(!e||e===''||e==='0')return 0;
+  try{const s=String(e).replace(/π|pi/gi,'Math.PI').replace(/sqrt\(/gi,'Math.sqrt(').replace(/\^/g,'**');return Function('"use strict";return ('+s+')')();}
+  catch(ex){return 0;}
+}
+function safeEvalXY(e,x,y){
+  if(!e)return 0;
+  try{const s=String(e).replace(/π|pi/gi,'Math.PI').replace(/sqrt\(/gi,'Math.sqrt(').replace(/\^/g,'**').replace(/(\d)(x|y)/g,'$1*$2');return Function('"use strict";const x='+x+',y='+y+';return ('+s+')')();}
+  catch(ex){return 0;}
+}
+
+function drawDouble(data){
+  const b=data.bounds||{},ov=b.outer||{lower:'0',upper:'1'},iv=b.inner||{lower:'0',upper:'1'};
+  const x0=safeEval(ov.lower),x1=safeEval(ov.upper)||1,N=40,M=20;
+  const xs=linspace(x0,x1,N),traces=[];
+  if(layerOn.floor){
+    const Xf=[],Yf=[],Zf=[];
+    xs.forEach(x=>{const y0=safeEvalXY(iv.lower,x,0),y1=safeEvalXY(iv.upper,x,0),ys=linspace(y0,y1,M);Xf.push(ys.map(()=>x));Yf.push(ys);Zf.push(ys.map(()=>0));});
+    traces.push({type:'surface',x:Xf,y:Yf,z:Zf,opacity:0.45,colorscale:[[0,'#0a2a4a'],[1,'#1565c0']],showscale:false,hoverinfo:'skip'});
+  }
+  if(layerOn.surf){
+    const Xs=[],Ys=[],Zs=[];
+    xs.forEach(x=>{const y0=safeEvalXY(iv.lower,x,0),y1=safeEvalXY(iv.upper,x,0),ys=linspace(y0,y1,M);Xs.push(ys.map(()=>x));Ys.push(ys);Zs.push(ys.map(y=>Math.max(0,safeEvalXY(data.expression||'1',x,y))));});
+    traces.push({type:'surface',x:Xs,y:Ys,z:Zs,opacity:opacity,colorscale:[[0,'#0d2b50'],[0.4,'#1565c0'],[0.8,'#2196f3'],[1,'#64b5f6']],showscale:false});
+  }
+  if(layerOn.bound){
+    const bx=[],by=[],bz=[];
+    xs.forEach(x=>{bx.push(x);by.push(safeEvalXY(iv.lower,x,0));bz.push(0);});
+    bx.push(null);by.push(null);bz.push(null);
+    xs.forEach(x=>{bx.push(x);by.push(safeEvalXY(iv.upper,x,0));bz.push(0);});
+    [x0,x1].forEach(xv=>{bx.push(null,xv,xv);by.push(null,safeEvalXY(iv.lower,xv,0),safeEvalXY(iv.upper,xv,0));bz.push(null,0,0);});
+    traces.push({type:'scatter3d',mode:'lines',x:bx,y:by,z:bz,line:{color:'#ff7b72',width:6},hoverinfo:'skip'});
+    const wx=[],wy=[],wz=[];
+    [x0,x1].forEach(xv=>{linspace(safeEvalXY(iv.lower,xv,0),safeEvalXY(iv.upper,xv,0),20).forEach(y=>{wx.push(xv);wy.push(y);wz.push(Math.max(0,safeEvalXY(data.expression||'1',xv,y)));});wx.push(null);wy.push(null);wz.push(null);});
+    traces.push({type:'scatter3d',mode:'lines',x:wx,y:wy,z:wz,line:{color:'#bc8cff',width:3},hoverinfo:'skip'});
+  }
+  Plotly.react('plotly-div',traces,getLayout('∬ '+data.expression+' dA'),{responsive:true,displayModeBar:true,modeBarButtonsToRemove:['toImage']});
+}
+
+function drawPolar(data){
+  const b=data.bounds||{},rMax=safeEval((b.outer||{upper:'1'}).upper)||1,tMax=safeEval((b.inner||{upper:'pi/2'}).upper)||Math.PI/2;
+  const N=50,traces=[],rs=linspace(0,rMax,N),ts=linspace(0,tMax,N);
+  if(layerOn.floor){
+    const Xp=[],Yp=[],Zp=[];
+    rs.forEach(r=>{Xp.push(ts.map(t=>r*Math.cos(t)));Yp.push(ts.map(t=>r*Math.sin(t)));Zp.push(ts.map(()=>0));});
+    traces.push({type:'surface',x:Xp,y:Yp,z:Zp,opacity:0.4,colorscale:[[0,'#0a2a4a'],[1,'#1565c0']],showscale:false,hoverinfo:'skip'});
+  }
+  if(layerOn.surf){
+    const Xs=[],Ys=[],Zs=[];
+    rs.forEach(r=>{Xs.push(ts.map(t=>r*Math.cos(t)));Ys.push(ts.map(t=>r*Math.sin(t)));Zs.push(ts.map(()=>r*r));});
+    traces.push({type:'surface',x:Xs,y:Ys,z:Zs,opacity:opacity,colorscale:[[0,'#0d2b50'],[0.5,'#1976d2'],[1,'#64b5f6']],showscale:false});
+  }
+  if(layerOn.bound){
+    traces.push({type:'scatter3d',mode:'lines',x:ts.map(t=>rMax*Math.cos(t)),y:ts.map(t=>rMax*Math.sin(t)),z:ts.map(()=>0),line:{color:'#ff7b72',width:7},hoverinfo:'skip'});
+    traces.push({type:'scatter3d',mode:'lines',x:[0,rMax],y:[0,0],z:[0,0],line:{color:'#ff7b72',width:6},hoverinfo:'skip'});
+    traces.push({type:'scatter3d',mode:'lines',x:[0,rMax*Math.cos(tMax)],y:[0,rMax*Math.sin(tMax)],z:[0,0],line:{color:'#ff7b72',width:6},hoverinfo:'skip'});
+    traces.push({type:'scatter3d',mode:'lines',x:ts.map(t=>rMax*Math.cos(t)),y:ts.map(t=>rMax*Math.sin(t)),z:ts.map(()=>rMax*rMax),line:{color:'#bc8cff',width:4},hoverinfo:'skip'});
+  }
+  Plotly.react('plotly-div',traces,getLayout('∬ (x²+y²) dA，极坐标区域'),{responsive:true,displayModeBar:true,modeBarButtonsToRemove:['toImage']});
+}
+
+function drawSpherical(data){
+  const N=50,traces=[],phis=linspace(0,Math.PI/2,N),thetas=linspace(0,2*Math.PI,N);
+  if(layerOn.surf){
+    const Xs=[],Ys=[],Zs=[];
+    phis.forEach(phi=>{Xs.push(thetas.map(t=>Math.sin(phi)*Math.cos(t)));Ys.push(thetas.map(t=>Math.sin(phi)*Math.sin(t)));Zs.push(thetas.map(()=>Math.cos(phi)));});
+    traces.push({type:'surface',x:Xs,y:Ys,z:Zs,opacity:opacity,colorscale:[[0,'#0d2b50'],[0.4,'#1565c0'],[0.8,'#42a5f5'],[1,'#90caf9']],showscale:false});
+  }
+  if(layerOn.floor){
+    const rs=linspace(0,1,30),Xd=[],Yd=[],Zd=[];
+    rs.forEach(r=>{Xd.push(thetas.map(t=>r*Math.cos(t)));Yd.push(thetas.map(t=>r*Math.sin(t)));Zd.push(thetas.map(()=>0));});
+    traces.push({type:'surface',x:Xd,y:Yd,z:Zd,opacity:0.35,colorscale:[[0,'#0a2240'],[1,'#1a4a7a']],showscale:false,hoverinfo:'skip'});
+  }
+  if(layerOn.bound){
+    traces.push({type:'scatter3d',mode:'lines',x:thetas.map(t=>Math.cos(t)),y:thetas.map(t=>Math.sin(t)),z:thetas.map(()=>0),line:{color:'#ff7b72',width:6},hoverinfo:'skip'});
+    traces.push({type:'scatter3d',mode:'lines',x:[0,0],y:[0,0],z:[0,1.25],line:{color:'#bc8cff',width:5},hoverinfo:'skip'});
+  }
+  const layout=getLayout('∭ z dV，上半单位球（球坐标）');
+  layout.scene.camera={eye:{x:1.4,y:1.2,z:1.0}};
+  Plotly.react('plotly-div',traces,layout,{responsive:true,displayModeBar:true,modeBarButtonsToRemove:['toImage']});
+}
+
+function drawCylindrical(data){drawDouble(data);}
+
+function drawTriple(data){
+  const N=20,traces=[],xs=linspace(0,1,N),ys=linspace(0,1,N);
+  const faceData=[{d:'z',v:0,c:'#0d2b50'},{d:'z',v:1,c:'#0a2240'},{d:'x',v:0,c:'#0f3060'},{d:'x',v:1,c:'#0a2840'},{d:'y',v:0,c:'#102050'},{d:'y',v:1,c:'#0c2038'}];
+  if(layerOn.floor){
+    faceData.forEach(f=>{
+      let Xf=[],Yf=[],Zf=[];
+      if(f.d==='z'){xs.forEach(x=>{Xf.push([...ys]);Yf.push(ys.map(()=>x));Zf.push(ys.map(()=>f.v));});}
+      else if(f.d==='x'){xs.forEach(y=>{Xf.push(ys.map(()=>f.v));Yf.push([...ys]);Zf.push(ys.map(z=>z));});}
+      else{xs.forEach(x=>{Xf.push([...ys]);Yf.push(ys.map(()=>f.v));Zf.push(ys.map(z=>z));});}
+      traces.push({type:'surface',x:Xf,y:Yf,z:Zf,opacity:0.3,colorscale:[[0,f.c],[1,f.c]],showscale:false,hoverinfo:'skip'});
+    });
+  }
+  if(layerOn.bound){
+    const ex=[0,1,1,0,0,null,0,1,1,0,0,null,0,0,null,1,1,null,0,0,null,1,1];
+    const ey=[0,0,1,1,0,null,0,0,1,1,0,null,0,0,null,0,0,null,1,1,null,1,1];
+    const ez=[0,0,0,0,0,null,1,1,1,1,1,null,0,1,null,0,1,null,0,1,null,0,1];
+    traces.push({type:'scatter3d',mode:'lines',x:ex,y:ey,z:ez,line:{color:'#ff7b72',width:5},hoverinfo:'skip'});
+  }
+  Plotly.react('plotly-div',traces,getLayout('∭ '+data.expression+' dV'),{responsive:true,displayModeBar:true,modeBarButtonsToRemove:['toImage']});
+}
+
+function renderParse(data){
+  const b=data.bounds||{},entries=[b.outer,b.middle,b.inner].filter(Boolean);
+  const coordMap={cartesian:'直角坐标系',polar:'极坐标',cylindrical:'柱坐标',spherical:'球坐标'};
+  document.getElementById('parse-body').innerHTML=`
+    <div class="card"><div class="card-title">🧮 被积函数</div><div class="mono">f(${(data.variables||[]).join(',')}) = ${data.expression||'—'}</div></div>
+    <div class="card"><div class="card-title">📐 积分限</div>${entries.map(e=>`<div class="bound-row"><span class="bvar">${e.var}</span><span class="brange">从 ${e.lower} 到 ${e.upper}</span></div>`).join('')}</div>
+    <div class="card"><div class="card-title">🌐 坐标系 & 几何描述</div><div class="coord-pill">${coordMap[data.coordinate_system]||data.coordinate_system||'未知'}</div><div class="region-desc">${data.region_description||''}</div>${data.result_hint?`<div class="result-val">积分结果 ${data.result_hint}</div>`:''}</div>
+  `;
+}
+
+function renderSteps(data){
+  const steps=data.steps||[];
+  if(!steps.length){document.getElementById('steps-body').innerHTML='<div style="color:var(--muted);font-size:13px;text-align:center;margin-top:60px">暂无解题步骤</div>';return;}
+  document.getElementById('steps-body').innerHTML=steps.map((s,i)=>`<div class="step-block"><div class="step-title"><span class="step-num">${i+1}</span>${s.t}</div><div class="step-content">${s.c}</div></div>`).join('');
+}
+
+function toggleLayer(name){
+  layerOn[name]=!layerOn[name];
+  document.getElementById('cb-'+name).classList.toggle('on',layerOn[name]);
+  if(curData)renderGraph(curData);
+}
+function setOpacity(v){opacity=parseFloat(v);if(curData)renderGraph(curData);}
+function resetCam(){Plotly.relayout('plotly-div',{'scene.camera':{eye:{x:1.6,y:1.4,z:1.2}}});}
+
+(function init(){
+  const saved=localStorage.getItem('claude_api_key');
+  if(saved)document.getElementById('api-key').value=saved;
+  document.getElementById('api-key').addEventListener('change',function(){localStorage.setItem('claude_api_key',this.value);});
+  window.addEventListener('resize',()=>{if(document.getElementById('pane-graph').classList.contains('on'))Plotly.Plots.resize(document.getElementById('plotly-div'));});
+})();
+</script>
+</body>
+</html>
