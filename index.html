@@ -488,9 +488,6 @@ function setOpacity(v){opacity=parseFloat(v);if(curData)renderGraph(curData);}
 function resetCam(){Plotly.relayout('plotly-div',{'scene.camera':{eye:{x:1.6,y:1.4,z:1.2}}});}
 
 (function init(){
-  const saved=localStorage.getItem('claude_api_key');
-  if(saved)document.getElementById('api-key').value=saved;
-  document.getElementById('api-key').addEventListener('change',function(){localStorage.setItem('claude_api_key',this.value);});
   window.addEventListener('resize',()=>{if(document.getElementById('pane-graph').classList.contains('on'))Plotly.Plots.resize(document.getElementById('plotly-div'));});
 })();
 </script>
