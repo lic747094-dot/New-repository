@@ -189,7 +189,7 @@
 </div>
 <script>
 // ── 配置：部署到 Vercel 后这里自动用相对路径，本地打开也能用示例 ──
-const API_ENDPOINT = '/api/analyze';
+const GEMINI_KEY = 'AIzaSyBJiWbv4ijTZvj_J_Ask89YdvsP2vxQFww';
 
 const EXAMPLES = [
   {
@@ -291,21 +291,32 @@ async function doAnalyze(){
   if(!img.src||img.style.display==='none'){showErr('请先上传题目图片');return;}
 
   document.getElementById('analyze-btn').disabled=true;
-  setStatus('正在调用百度公式识别...','busy');
-  showLoading('正在识别图片中的重积分公式...');
+  setStatus('正在调用 Gemini Vision 识别题目...','busy');
+  showLoading('Gemini 正在识别图片中的重积分...');
 
-  // 取 base64（去掉 data:image/xxx;base64, 前缀）
   const b64=img.src.split(',')[1];
+  const prompt=`你是一位大学数学教授，专门处理重积分题目。请识别图片中的重积分题目，严格按以下JSON格式返回（不要任何其他文字，不要markdown格式，直接输出JSON）：
+{"label":"题目简短描述","integral_type":"double或triple","expression":"被积函数（用^表示幂，sqrt()表示根号，普通文本格式）","variables":["变量列表"],"bounds":{"outer":{"var":"最外层变量","lower":"下限","upper":"上限"},"inner":{"var":"最内层变量","lower":"下限","upper":"上限"}},"region_description":"用中文详细描述积分区域几何形状","coordinate_system":"cartesian或polar或cylindrical或spherical","result_hint":"如能算出结果写= 值否则写空字符串","steps":[{"t":"步骤标题","c":"步骤说明"}]}
+对于三重积分在bounds中加入middle字段。steps包含5-6个解题步骤。`;
 
   try{
-    const res=await fetch(API_ENDPOINT,{
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({ image: b64 })
-    });
-    if(!res.ok){const e=await res.json();throw new Error(e.error||'请求失败 '+res.status);}
+    const res=await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_KEY}`,
+      {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({
+          contents:[{parts:[
+            {inline_data:{mime_type:'image/jpeg',data:b64}},
+            {text:prompt}
+          ]}],
+          generationConfig:{temperature:0.1,maxOutputTokens:2000}
+        })
+      }
+    );
+    if(!res.ok){const e=await res.json();throw new Error(e.error?.message||'请求失败 '+res.status);}
     const data=await res.json();
-    const text=data.content.map(c=>c.text||'').join('');
+    const text=data.candidates?.[0]?.content?.parts?.[0]?.text||'';
     const clean=text.replace(/```json|```/g,'').trim();
     const parsed=JSON.parse(clean);
     curData=parsed;
