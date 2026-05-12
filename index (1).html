@@ -1,0 +1,744 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>重积分区域可视化图库 · 数智融合</title>
+<script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  :root{
+    --bg:#0d1117;--surface:#161b22;--surface2:#21262d;--border:#30363d;
+    --accent:#58a6ff;--green:#3fb950;--purple:#bc8cff;--orange:#ff7b72;
+    --red:#f85149;--text:#e6edf3;--muted:#8b949e;
+  }
+  body{font-family:'Microsoft YaHei',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;display:flex;flex-direction:column}
+  
+  .header{background:var(--surface);border-bottom:1px solid var(--border);padding:14px 24px;display:flex;align-items:center;gap:14px;flex-shrink:0}
+  .logo-box{width:40px;height:40px;background:linear-gradient(135deg,#1f6feb,#bc8cff);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;color:#fff;flex-shrink:0}
+  .logo-title{font-size:18px;font-weight:700}
+  .logo-sub{font-size:12px;color:var(--muted);margin-top:2px}
+  .header-right{margin-left:auto;display:flex;align-items:center;gap:10px}
+  .badge{font-size:11px;background:rgba(88,166,255,.15);border:1px solid rgba(88,166,255,.3);color:var(--accent);padding:4px 12px;border-radius:20px}
+
+  .cat-bar{background:var(--surface);border-bottom:1px solid var(--border);padding:10px 24px;display:flex;gap:8px;flex-wrap:wrap;flex-shrink:0}
+  .cat-btn{background:var(--surface2);border:1px solid var(--border);border-radius:20px;padding:6px 16px;font-size:12px;cursor:pointer;color:var(--muted);transition:.15s;font-family:'Microsoft YaHei',sans-serif}
+  .cat-btn:hover{border-color:var(--accent);color:var(--accent)}
+  .cat-btn.on{background:rgba(88,166,255,.15);border-color:var(--accent);color:var(--accent)}
+
+  .body{display:flex;flex:1;overflow:hidden;height:calc(100vh - 113px)}
+
+  .left{width:320px;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;flex-shrink:0}
+  .search-box{padding:12px 16px;border-bottom:1px solid var(--border)}
+  .search-input{width:100%;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:8px 12px;color:var(--text);font-size:13px;outline:none;transition:.2s}
+  .search-input:focus{border-color:var(--accent)}
+  .card-list{flex:1;overflow-y:auto;padding:10px}
+  .card-list::-webkit-scrollbar{width:4px}
+  .card-list::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+
+  .item-card{background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:8px;cursor:pointer;transition:.15s}
+  .item-card:hover{border-color:var(--accent);transform:translateX(2px)}
+  .item-card.active{border-color:var(--accent);background:rgba(88,166,255,.08)}
+  .item-tag{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px;display:flex;align-items:center;gap:6px}
+  .tag-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
+  .item-title{font-size:13px;font-weight:600;color:var(--text);margin-bottom:4px;line-height:1.4}
+  .item-math{font-family:monospace;font-size:12px;color:var(--purple);line-height:1.5}
+  .item-desc{font-size:11px;color:var(--muted);margin-top:4px}
+
+  .right{flex:1;display:flex;flex-direction:column;overflow:hidden}
+  .detail-header{background:var(--surface);border-bottom:1px solid var(--border);padding:14px 20px;flex-shrink:0}
+  .detail-title{font-size:16px;font-weight:700;margin-bottom:4px}
+  .detail-math{font-family:monospace;font-size:14px;color:var(--purple)}
+  
+  .detail-body{flex:1;display:flex;overflow:hidden}
+  .graph-area{flex:1;position:relative;min-width:0}
+  #plotly-div{width:100%;height:100%}
+  
+  .info-panel{width:280px;background:var(--surface);border-left:1px solid var(--border);overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:12px;flex-shrink:0}
+  .info-panel::-webkit-scrollbar{width:4px}
+  .info-panel::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+  
+  .info-card{background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px 14px}
+  .info-card-title{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px}
+  .info-math{font-family:monospace;font-size:12px;color:var(--purple);background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:8px 10px;line-height:1.8}
+  .bound-row{display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--border);font-size:12px}
+  .bound-row:last-child{border:none}
+  .bvar{font-family:monospace;color:var(--orange);min-width:36px}
+  .brange{font-family:monospace;color:var(--green)}
+  .result-box{background:rgba(63,185,80,.1);border:1px solid rgba(63,185,80,.3);border-radius:6px;padding:8px 12px;font-family:monospace;font-size:14px;color:var(--green);text-align:center}
+  .desc-text{font-size:12px;color:var(--text);line-height:1.8}
+  .step-item{padding:8px 0;border-bottom:1px solid var(--border);font-size:12px}
+  .step-item:last-child{border:none}
+  .step-num{display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;background:rgba(88,166,255,.2);color:var(--accent);font-size:10px;font-weight:700;margin-right:6px;flex-shrink:0;vertical-align:middle}
+  .step-t{font-weight:600;color:var(--text)}
+  .step-c{color:var(--muted);margin-top:3px;line-height:1.6;padding-left:24px}
+
+  .ctrl-bar{background:var(--surface);border-top:1px solid var(--border);padding:8px 16px;display:flex;gap:8px;align-items:center;flex-shrink:0}
+  .ctrl-btn{background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:5px 12px;color:var(--text);font-size:11px;cursor:pointer;transition:.15s;font-family:'Microsoft YaHei',sans-serif}
+  .ctrl-btn:hover,.ctrl-btn.on{border-color:var(--accent);color:var(--accent);background:rgba(88,166,255,.1)}
+  .sep{width:1px;height:20px;background:var(--border)}
+  .op-ctrl{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--muted)}
+  .op-ctrl input{width:80px;accent-color:var(--accent)}
+
+  .empty-state{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;color:var(--muted)}
+  .empty-icon{font-size:60px;opacity:.2}
+  .empty-text{font-size:14px;text-align:center;opacity:.5}
+
+  .count-badge{background:rgba(88,166,255,.15);color:var(--accent);font-size:10px;padding:2px 7px;border-radius:10px;margin-left:auto}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="logo-box">∫∫</div>
+  <div>
+    <div class="logo-title">重积分区域可视化图库</div>
+    <div class="logo-sub">数智融合的数学发现之旅 · 工科数学分析 · 考研数学</div>
+  </div>
+  <div class="header-right">
+    <div class="badge">HTML5 · 选题1+5</div>
+  </div>
+</div>
+
+<div class="cat-bar" id="cat-bar">
+  <button class="cat-btn on" onclick="filterCat('all')">全部</button>
+  <button class="cat-btn" onclick="filterCat('double-cart')">二重积分·直角坐标</button>
+  <button class="cat-btn" onclick="filterCat('double-polar')">二重积分·极坐标</button>
+  <button class="cat-btn" onclick="filterCat('triple-cart')">三重积分·直角坐标</button>
+  <button class="cat-btn" onclick="filterCat('triple-cyl')">三重积分·柱坐标</button>
+  <button class="cat-btn" onclick="filterCat('triple-sph')">三重积分·球坐标</button>
+</div>
+
+<div class="body">
+  <div class="left">
+    <div class="search-box">
+      <input class="search-input" type="text" placeholder="🔍 搜索积分类型或关键词..." oninput="doSearch(this.value)" id="search-inp">
+    </div>
+    <div class="card-list" id="card-list"></div>
+  </div>
+  <div class="right">
+    <div class="detail-header" id="detail-header">
+      <div class="detail-title" id="detail-title">← 从左侧选择一个积分区域</div>
+      <div class="detail-math" id="detail-math">点击卡片查看3D可视化图形及解题思路</div>
+    </div>
+    <div class="detail-body">
+      <div class="graph-area">
+        <div id="plotly-div"></div>
+        <div class="empty-state" id="empty-state">
+          <div class="empty-icon">∭</div>
+          <div class="empty-text">选择左侧积分区域<br>查看3D立体图形</div>
+        </div>
+      </div>
+      <div class="info-panel" id="info-panel" style="display:none"></div>
+    </div>
+    <div class="ctrl-bar" id="ctrl-bar" style="display:none">
+      <button class="ctrl-btn on" id="cb-surf" onclick="toggleLayer('surf')">曲面/立体</button>
+      <button class="ctrl-btn on" id="cb-floor" onclick="toggleLayer('floor')">底面区域</button>
+      <button class="ctrl-btn on" id="cb-bound" onclick="toggleLayer('bound')">边界曲线</button>
+      <div class="sep"></div>
+      <div class="op-ctrl">透明度 <input type="range" min="0.1" max="1" step="0.1" value="0.65" id="op-sl" oninput="setOp(this.value)"></div>
+      <div class="sep"></div>
+      <button class="ctrl-btn" onclick="resetCam()">重置视角</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const CAT_COLORS = {
+  'double-cart':'#58a6ff','double-polar':'#3fb950',
+  'triple-cart':'#bc8cff','triple-cyl':'#ff7b72','triple-sph':'#f0883e'
+};
+const CAT_NAMES = {
+  'double-cart':'二重·直角','double-polar':'二重·极坐标',
+  'triple-cart':'三重·直角','triple-cyl':'三重·柱坐标','triple-sph':'三重·球坐标'
+};
+
+const DATA = [
+  // ── 二重积分·直角坐标 ──────────────────────────────
+  {
+    id:1, cat:'double-cart',
+    title:'三角形区域',
+    math:'∬_D xy dA',
+    desc:'由 x=0, y=0, x+y=1 围成的三角形',
+    bounds:{outer:{var:'x',lower:'0',upper:'1'}, inner:{var:'y',lower:'0',upper:'1-x'}},
+    coord:'cartesian', expr:'x*y', result:'= 1/24',
+    region:'直角三角形区域，顶点为(0,0)、(1,0)、(0,1)，三条边为两坐标轴和直线x+y=1。',
+    steps:[
+      {t:'确定区域',c:'D由x轴、y轴和x+y=1围成的三角形，x∈[0,1]，y∈[0,1-x]。'},
+      {t:'建立累次积分',c:'∬xy dA = ∫₀¹[∫₀^(1-x) xy dy]dx'},
+      {t:'内层积分',c:'∫₀^(1-x) xy dy = x·[y²/2]₀^(1-x) = x(1-x)²/2'},
+      {t:'外层积分',c:'∫₀¹ x(1-x)²/2 dx = (1/2)·B(2,3) = 1/24'},
+      {t:'结果',c:'∬_D xy dA = 1/24'}
+    ]
+  },
+  {
+    id:2, cat:'double-cart',
+    title:'抛物线围成区域',
+    math:'∬_D (x+y) dA',
+    desc:'由 y=x² 和 y=√x 围成',
+    bounds:{outer:{var:'x',lower:'0',upper:'1'}, inner:{var:'y',lower:'x^2',upper:'sqrt(x)'}},
+    coord:'cartesian', expr:'x+y', result:'= 11/20',
+    region:'两条抛物线y=x²（向上开口）与y=√x（向右开口）在[0,1]×[0,1]内围成的月牙形区域，交点为(0,0)和(1,1)。',
+    steps:[
+      {t:'求交点',c:'令x²=√x，解得x=0和x=1，交点(0,0)和(1,1)。'},
+      {t:'判断上下曲线',c:'当0<x<1时，√x>x²，上界为√x，下界为x²。'},
+      {t:'建立累次积分',c:'∫₀¹[∫_(x²)^(√x)(x+y)dy]dx'},
+      {t:'内层积分',c:'[xy+y²/2]_(x²)^(√x) = x(√x-x²)+(x-x⁴)/2'},
+      {t:'结果',c:'∬_D(x+y)dA = 11/20 = 0.55'}
+    ]
+  },
+  {
+    id:3, cat:'double-cart',
+    title:'矩形区域',
+    math:'∬_D e^(x+y) dA',
+    desc:'D: 0≤x≤1，0≤y≤1 的单位正方形',
+    bounds:{outer:{var:'x',lower:'0',upper:'1'}, inner:{var:'y',lower:'0',upper:'1'}},
+    coord:'cartesian', expr:'Math.exp(x+y)', result:'= (e-1)²',
+    region:'单位正方形区域D=[0,1]×[0,1]，是最简单的矩形积分区域，可直接分离变量计算。',
+    steps:[
+      {t:'分离变量',c:'∬e^(x+y)dA = ∬e^x·e^y dA = (∫₀¹e^x dx)(∫₀¹e^y dy)'},
+      {t:'计算各积分',c:'∫₀¹e^x dx = e-1，∫₀¹e^y dy = e-1'},
+      {t:'结果',c:'∬_D e^(x+y)dA = (e-1)² ≈ 2.952'}
+    ]
+  },
+  {
+    id:4, cat:'double-cart',
+    title:'半抛物线区域',
+    math:'∬_D x² dA',
+    desc:'D: 0≤x≤2，0≤y≤x²',
+    bounds:{outer:{var:'x',lower:'0',upper:'2'}, inner:{var:'y',lower:'0',upper:'x^2'}},
+    coord:'cartesian', expr:'x*x', result:'= 32/5',
+    region:'由x轴、直线x=2和抛物线y=x²围成的区域，形如一个由抛物线封顶的"帽形"区域。',
+    steps:[
+      {t:'建立积分',c:'∫₀²[∫₀^(x²) x² dy]dx = ∫₀² x²·x² dx = ∫₀² x⁴ dx'},
+      {t:'计算',c:'[x⁵/5]₀² = 32/5 = 6.4'},
+      {t:'结果',c:'∬_D x² dA = 32/5'}
+    ]
+  },
+  {
+    id:5, cat:'double-cart',
+    title:'交换积分顺序（考研常考）',
+    math:'∬_D y·e^(x²) dA',
+    desc:'D: 0≤y≤1，y≤x≤1（需交换积分顺序）',
+    bounds:{outer:{var:'x',lower:'0',upper:'1'}, inner:{var:'y',lower:'0',upper:'x'}},
+    coord:'cartesian', expr:'y', result:'= (e-1)/2·... ',
+    region:'三角形区域，由y=0、x=1、y=x围成。原积分对x先积分含e^(x²)无法计算，交换顺序后可解。',
+    steps:[
+      {t:'原积分',c:'∫₀¹[∫_y^1 y·e^(x²)dx]dy，内层∫e^(x²)dx无初等函数。'},
+      {t:'交换积分顺序',c:'D: y从0到x，x从0到1 → 等价于x从0到1，y从0到x。'},
+      {t:'新积分',c:'∫₀¹[∫₀^x y·e^(x²)dy]dx = ∫₀¹ e^(x²)·[y²/2]₀^x dx'},
+      {t:'化简',c:'= ∫₀¹ (x²/2)·e^(x²) dx = (e-1)/2'},
+      {t:'结果',c:'∬_D y·e^(x²) dA = (e-1)/2 ≈ 0.859'}
+    ]
+  },
+
+  // ── 二重积分·极坐标 ──────────────────────────────
+  {
+    id:6, cat:'double-polar',
+    title:'圆盘区域（全圆）',
+    math:'∬_D (x²+y²) dA',
+    desc:'D: x²+y²≤R²，完整圆盘',
+    bounds:{outer:{var:'r',lower:'0',upper:'2'}, inner:{var:'θ',lower:'0',upper:'2π'}},
+    coord:'polar', expr:'r^2', result:'= πR⁴/2',
+    region:'以原点为圆心、半径为R的完整圆盘区域。利用极坐标r∈[0,R]，θ∈[0,2π]可大大简化计算。',
+    steps:[
+      {t:'极坐标变换',c:'x²+y²=r²，dA=r dr dθ，区域变为0≤r≤R，0≤θ≤2π。'},
+      {t:'建立积分',c:'∬r²·r dr dθ = ∫₀^(2π)dθ·∫₀^R r³dr'},
+      {t:'计算',c:'= 2π·[r⁴/4]₀^R = πR⁴/2'},
+      {t:'R=2时',c:'∬(x²+y²)dA = π·16/2 = 8π ≈ 25.13'}
+    ]
+  },
+  {
+    id:7, cat:'double-polar',
+    title:'第一象限扇形',
+    math:'∬_D (x²+y²) dA',
+    desc:'D: x²+y²≤1，第一象限（0≤θ≤π/2）',
+    bounds:{outer:{var:'r',lower:'0',upper:'1'}, inner:{var:'θ',lower:'0',upper:'π/2'}},
+    coord:'polar', expr:'r^2', result:'= π/8',
+    region:'单位圆在第一象限的四分之一扇形区域，极坐标表示为r∈[0,1]，θ∈[0,π/2]。',
+    steps:[
+      {t:'极坐标变换',c:'r∈[0,1]，θ∈[0,π/2]，dA=r dr dθ'},
+      {t:'建立积分',c:'∫₀^(π/2)∫₀^1 r²·r dr dθ = ∫₀^(π/2)dθ·∫₀^1 r³dr'},
+      {t:'计算',c:'= (π/2)·(1/4) = π/8 ≈ 0.3927'}
+    ]
+  },
+  {
+    id:8, cat:'double-polar',
+    title:'圆环区域',
+    math:'∬_D √(x²+y²) dA',
+    desc:'D: 1≤x²+y²≤4，圆环',
+    bounds:{outer:{var:'r',lower:'1',upper:'2'}, inner:{var:'θ',lower:'0',upper:'2π'}},
+    coord:'polar', expr:'r', result:'= 14π/3',
+    region:'内圆半径为1、外圆半径为2的圆环形区域，极坐标表示为r∈[1,2]，θ∈[0,2π]。',
+    steps:[
+      {t:'极坐标变换',c:'√(x²+y²)=r，r∈[1,2]，θ∈[0,2π]'},
+      {t:'建立积分',c:'∫₀^(2π)∫₁^2 r·r dr dθ = 2π·∫₁^2 r²dr'},
+      {t:'计算',c:'= 2π·[r³/3]₁^2 = 2π·(8/3-1/3) = 14π/3 ≈ 14.66'}
+    ]
+  },
+  {
+    id:9, cat:'double-polar',
+    title:'心形线围成区域（考研）',
+    math:'∬_D r dA（极坐标）',
+    desc:'D: r≤1+cosθ，心形线内部',
+    bounds:{outer:{var:'r',lower:'0',upper:'1+cosθ'}, inner:{var:'θ',lower:'0',upper:'2π'}},
+    coord:'polar', expr:'r', result:'= 3π/2',
+    region:'心形线r=1+cosθ围成的区域，形似心形，面积为3π/2。考研常见的极坐标积分区域。',
+    steps:[
+      {t:'确定范围',c:'r从0到1+cosθ，θ从0到2π。'},
+      {t:'面积计算',c:'A = ∫₀^(2π)∫₀^(1+cosθ) r dr dθ = (1/2)∫₀^(2π)(1+cosθ)²dθ'},
+      {t:'展开计算',c:'= (1/2)∫₀^(2π)(1+2cosθ+cos²θ)dθ = (1/2)(2π+0+π) = 3π/2'},
+      {t:'结果',c:'心形线围成面积 = 3π/2 ≈ 4.712'}
+    ]
+  },
+  {
+    id:10, cat:'double-polar',
+    title:'半圆区域',
+    math:'∬_D e^(-(x²+y²)) dA',
+    desc:'D: x²+y²≤a²，上半圆（0≤θ≤π）',
+    bounds:{outer:{var:'r',lower:'0',upper:'1'}, inner:{var:'θ',lower:'0',upper:'π'}},
+    coord:'polar', expr:'Math.exp(-r*r)', result:'= π(1-e⁻ᵃ²)/2',
+    region:'上半圆区域，极坐标r∈[0,a]，θ∈[0,π]。被积函数e^(-(x²+y²))在极坐标下化为e^(-r²)，积分变得很简洁。',
+    steps:[
+      {t:'极坐标变换',c:'e^(-(x²+y²))=e^(-r²)，r∈[0,a]，θ∈[0,π]'},
+      {t:'建立积分',c:'∫₀^π dθ·∫₀^a e^(-r²)·r dr = π·∫₀^a r·e^(-r²)dr'},
+      {t:'换元',c:'令u=r²，du=2r dr，= π·(1/2)·[-e^(-r²)]₀^a'},
+      {t:'结果',c:'= π(1-e^(-a²))/2，a=1时≈0.986'}
+    ]
+  },
+
+  // ── 三重积分·直角坐标 ──────────────────────────────
+  {
+    id:11, cat:'triple-cart',
+    title:'长方体区域',
+    math:'∭_Ω xyz dV',
+    desc:'Ω: 0≤x≤1，0≤y≤2，0≤z≤3',
+    bounds:{outer:{var:'x',lower:'0',upper:'1'}, middle:{var:'y',lower:'0',upper:'2'}, inner:{var:'z',lower:'0',upper:'3'}},
+    coord:'cartesian3', expr:'x*y*z', result:'= 9/2',
+    region:'长方体区域，三边长分别为1、2、3。被积函数xyz可完全分离，是三重积分的基础练习题型。',
+    steps:[
+      {t:'分离变量',c:'∭xyz dV = (∫₀¹x dx)(∫₀²y dy)(∫₀³z dz)'},
+      {t:'各项积分',c:'∫₀¹x dx=1/2，∫₀²y dy=2，∫₀³z dz=9/2'},
+      {t:'结果',c:'∭xyz dV = (1/2)·2·(9/2) = 9/2 = 4.5'}
+    ]
+  },
+  {
+    id:12, cat:'triple-cart',
+    title:'四面体区域',
+    math:'∭_Ω z dV',
+    desc:'Ω: x+y+z≤1，x≥0，y≥0，z≥0',
+    bounds:{outer:{var:'x',lower:'0',upper:'1'}, middle:{var:'y',lower:'0',upper:'1-x'}, inner:{var:'z',lower:'0',upper:'1-x-y'}},
+    coord:'cartesian3', expr:'z', result:'= 1/24',
+    region:'以(0,0,0)、(1,0,0)、(0,1,0)、(0,0,1)为顶点的四面体，由三坐标面和平面x+y+z=1围成。',
+    steps:[
+      {t:'确定范围',c:'z∈[0,1-x-y]，y∈[0,1-x]，x∈[0,1]'},
+      {t:'内层积分',c:'∫₀^(1-x-y) z dz = (1-x-y)²/2'},
+      {t:'中层积分',c:'∫₀^(1-x) (1-x-y)²/2 dy = (1-x)³/6'},
+      {t:'外层积分',c:'∫₀¹ (1-x)³/6 dx = 1/24'},
+      {t:'结果',c:'∭_Ω z dV = 1/24 ≈ 0.0417'}
+    ]
+  },
+  {
+    id:13, cat:'triple-cart',
+    title:'锥形区域（直角坐标）',
+    math:'∭_Ω dV',
+    desc:'Ω: z²≤x²+y²，0≤z≤1（锥体）',
+    bounds:{outer:{var:'x',lower:'-1',upper:'1'}, middle:{var:'y',lower:'-sqrt(1-x^2)',upper:'sqrt(1-x^2)'}, inner:{var:'z',lower:'sqrt(x^2+y^2)',upper:'1'}},
+    coord:'cartesian3', expr:'1', result:'= π/3',
+    region:'圆锥体，由锥面z=√(x²+y²)和平面z=1围成，顶点在原点。用柱坐标或球坐标计算更简单。',
+    steps:[
+      {t:'建立积分（柱坐标更简）',c:'此题用直角坐标较复杂，建议转化为柱坐标。'},
+      {t:'柱坐标结果',c:'∫₀^(2π)∫₀^1∫_r^1 r dz dr dθ = 2π·∫₀^1 r(1-r)dr'},
+      {t:'计算',c:'= 2π·(1/2-1/3) = 2π·(1/6) = π/3 ≈ 1.047'}
+    ]
+  },
+
+  // ── 三重积分·柱坐标 ──────────────────────────────
+  {
+    id:14, cat:'triple-cyl',
+    title:'圆柱体',
+    math:'∭_Ω z dV',
+    desc:'Ω: x²+y²≤1，0≤z≤2，圆柱体',
+    bounds:{outer:{var:'r',lower:'0',upper:'1'}, middle:{var:'θ',lower:'0',upper:'2π'}, inner:{var:'z',lower:'0',upper:'2'}},
+    coord:'cylindrical', expr:'z', result:'= 2π',
+    region:'以z轴为轴心、半径为1、高为2的完整圆柱体。柱坐标x=rcosθ，y=rsinθ，dV=r dr dθ dz。',
+    steps:[
+      {t:'柱坐标变换',c:'r∈[0,1]，θ∈[0,2π]，z∈[0,2]，dV=r dr dθ dz'},
+      {t:'建立积分',c:'∫₀^(2π)∫₀^1∫₀^2 z·r dz dr dθ'},
+      {t:'内层',c:'∫₀^2 z dz = 2'},
+      {t:'中间层',c:'∫₀^1 r·2 dr = 1'},
+      {t:'结果',c:'∫₀^(2π) 1 dθ = 2π ≈ 6.283'}
+    ]
+  },
+  {
+    id:15, cat:'triple-cyl',
+    title:'抛物面与平面之间（考研）',
+    math:'∭_Ω dV',
+    desc:'Ω: z≥x²+y²，z≤1（旋转抛物面与平面z=1）',
+    bounds:{outer:{var:'r',lower:'0',upper:'1'}, middle:{var:'θ',lower:'0',upper:'2π'}, inner:{var:'z',lower:'r^2',upper:'1'}},
+    coord:'cylindrical', expr:'1', result:'= π/2',
+    region:'旋转抛物面z=x²+y²与平面z=1围成的立体区域。抛物面在下，平面在上，z轴为对称轴。',
+    steps:[
+      {t:'柱坐标',c:'z∈[r²,1]，r∈[0,1]，θ∈[0,2π]'},
+      {t:'建立积分',c:'∫₀^(2π)∫₀^1∫_(r²)^1 r dz dr dθ'},
+      {t:'内层积分',c:'∫_(r²)^1 dz = 1-r²'},
+      {t:'中间层',c:'∫₀^1 r(1-r²)dr = 1/2-1/4 = 1/4'},
+      {t:'结果',c:'2π·(1/4) = π/2 ≈ 1.571'}
+    ]
+  },
+  {
+    id:16, cat:'triple-cyl',
+    title:'圆锥与圆柱组合',
+    math:'∭_Ω z² dV',
+    desc:'Ω: x²+y²≤z²，0≤z≤2（锥面内的圆柱）',
+    bounds:{outer:{var:'r',lower:'0',upper:'2'}, middle:{var:'θ',lower:'0',upper:'2π'}, inner:{var:'z',lower:'r',upper:'2'}},
+    coord:'cylindrical', expr:'z*z', result:'= 8π/3',
+    region:'由锥面r=z（即x²+y²=z²）和平面z=2围成的区域，z轴方向的锥形立体。',
+    steps:[
+      {t:'确定范围',c:'r从0到z，等价地z从r到2，r从0到2，θ∈[0,2π]'},
+      {t:'建立积分',c:'∫₀^(2π)∫₀^2∫_r^2 z²·r dz dr dθ'},
+      {t:'内层',c:'∫_r^2 z² dz = (8-r³)/3'},
+      {t:'中间层',c:'∫₀^2 r(8-r³)/3 dr = (1/3)·(16-4) = 4'},
+      {t:'结果',c:'2π·4/3... = 8π/3 ≈ 8.378'}
+    ]
+  },
+
+  // ── 三重积分·球坐标 ──────────────────────────────
+  {
+    id:17, cat:'triple-sph',
+    title:'上半球体',
+    math:'∭_Ω z dV',
+    desc:'Ω: x²+y²+z²≤1，z≥0（上半单位球）',
+    bounds:{outer:{var:'ρ',lower:'0',upper:'1'}, middle:{var:'φ',lower:'0',upper:'π/2'}, inner:{var:'θ',lower:'0',upper:'2π'}},
+    coord:'spherical', expr:'z', result:'= π/4',
+    region:'单位球的上半部分，z≥0。球坐标：ρ∈[0,1]，φ∈[0,π/2]（天顶角），θ∈[0,2π]（方位角）。',
+    steps:[
+      {t:'球坐标变换',c:'z=ρcosφ，dV=ρ²sinφ dρ dφ dθ'},
+      {t:'建立积分',c:'∫₀^(2π)∫₀^(π/2)∫₀^1 ρcosφ·ρ²sinφ dρ dφ dθ'},
+      {t:'分离变量',c:'=[∫₀^(2π)dθ]·[∫₀^(π/2)sinφcosφ dφ]·[∫₀^1 ρ³dρ]'},
+      {t:'计算各项',c:'2π × 1/2 × 1/4'},
+      {t:'结果',c:'∭z dV = π/4 ≈ 0.785'}
+    ]
+  },
+  {
+    id:18, cat:'triple-sph',
+    title:'完整球体',
+    math:'∭_Ω (x²+y²+z²) dV',
+    desc:'Ω: x²+y²+z²≤R²（完整球体）',
+    bounds:{outer:{var:'ρ',lower:'0',upper:'1'}, middle:{var:'φ',lower:'0',upper:'π'}, inner:{var:'θ',lower:'0',upper:'2π'}},
+    coord:'spherical', expr:'rho^2', result:'= 4πR⁵/5',
+    region:'以原点为中心、半径为R的完整球体。球坐标：ρ∈[0,R]，φ∈[0,π]，θ∈[0,2π]。',
+    steps:[
+      {t:'球坐标',c:'x²+y²+z²=ρ²，dV=ρ²sinφ dρ dφ dθ'},
+      {t:'建立积分',c:'∫₀^(2π)∫₀^π∫₀^R ρ²·ρ²sinφ dρ dφ dθ'},
+      {t:'分离',c:'2π·2·(R⁵/5) = 4πR⁵/5'},
+      {t:'R=1时',c:'∭(x²+y²+z²)dV = 4π/5 ≈ 2.513'}
+    ]
+  },
+  {
+    id:19, cat:'triple-sph',
+    title:'球缺区域（考研）',
+    math:'∭_Ω z dV',
+    desc:'Ω: x²+y²+z²≤2z（过原点的球）',
+    bounds:{outer:{var:'ρ',lower:'0',upper:'2cosφ'}, middle:{var:'φ',lower:'0',upper:'π/2'}, inner:{var:'θ',lower:'0',upper:'2π'}},
+    coord:'spherical', expr:'z', result:'= π',
+    region:'球面x²+y²+(z-1)²=1即x²+y²+z²=2z围成的球，球心在(0,0,1)、半径为1。球坐标表示：ρ=2cosφ。',
+    steps:[
+      {t:'球坐标',c:'x²+y²+z²=2z化为ρ²=2ρcosφ，即ρ=2cosφ'},
+      {t:'确定范围',c:'ρ∈[0,2cosφ]，φ∈[0,π/2]，θ∈[0,2π]'},
+      {t:'z=ρcosφ代入',c:'∫₀^(2π)∫₀^(π/2)∫₀^(2cosφ) ρcosφ·ρ²sinφ dρ dφ dθ'},
+      {t:'内层积分',c:'∫₀^(2cosφ) ρ³dρ = 4cos⁴φ'},
+      {t:'结果',c:'∭z dV = π'}
+    ]
+  },
+  {
+    id:20, cat:'triple-sph',
+    title:'锥面与球面之间',
+    math:'∭_Ω dV',
+    desc:'Ω: z≥√(x²+y²)，x²+y²+z²≤1（冰激凌形）',
+    bounds:{outer:{var:'ρ',lower:'0',upper:'1'}, middle:{var:'φ',lower:'0',upper:'π/4'}, inner:{var:'θ',lower:'0',upper:'2π'}},
+    coord:'spherical', expr:'1', result:'= (2-√2)π/3',
+    region:'"冰激凌形"区域：上方由单位球面围住，下方由45°锥面z=√(x²+y²)截断。球坐标φ∈[0,π/4]。',
+    steps:[
+      {t:'球坐标',c:'锥面z=√(x²+y²)对应φ=π/4，球面ρ=1'},
+      {t:'确定范围',c:'ρ∈[0,1]，φ∈[0,π/4]，θ∈[0,2π]'},
+      {t:'建立积分',c:'∫₀^(2π)∫₀^(π/4)∫₀^1 ρ²sinφ dρ dφ dθ'},
+      {t:'分离计算',c:'2π·(1/3)·[-cosφ]₀^(π/4) = (2π/3)(1-√2/2)'},
+      {t:'结果',c:'= (2-√2)π/3 ≈ 0.614'}
+    ]
+  }
+];
+
+let curItem = null;
+let layerOn = {surf:true, floor:true, bound:true};
+let opacity = 0.65;
+let curCat = 'all';
+let curSearch = '';
+
+function filterCat(cat){
+  curCat = cat;
+  document.querySelectorAll('.cat-btn').forEach(b=>b.classList.remove('on'));
+  event.target.classList.add('on');
+  renderList();
+}
+
+function doSearch(v){
+  curSearch = v.toLowerCase();
+  renderList();
+}
+
+function renderList(){
+  const list = document.getElementById('card-list');
+  const items = DATA.filter(d=>{
+    const matchCat = curCat==='all' || d.cat===curCat;
+    const matchSearch = !curSearch || d.title.includes(curSearch)||d.math.includes(curSearch)||d.desc.includes(curSearch)||CAT_NAMES[d.cat].includes(curSearch);
+    return matchCat && matchSearch;
+  });
+  list.innerHTML = items.map(d=>`
+    <div class="item-card ${curItem&&curItem.id===d.id?'active':''}" onclick="selectItem(${d.id})">
+      <div class="item-tag">
+        <span class="tag-dot" style="background:${CAT_COLORS[d.cat]}"></span>
+        ${CAT_NAMES[d.cat]}
+      </div>
+      <div class="item-title">${d.title}</div>
+      <div class="item-math">${d.math}</div>
+      <div class="item-desc">${d.desc}</div>
+    </div>
+  `).join('');
+}
+
+function selectItem(id){
+  curItem = DATA.find(d=>d.id===id);
+  renderList();
+  document.getElementById('detail-title').textContent = curItem.title;
+  document.getElementById('detail-math').textContent = curItem.math + '  —  ' + curItem.desc;
+  document.getElementById('empty-state').style.display='none';
+  document.getElementById('ctrl-bar').style.display='flex';
+  document.getElementById('info-panel').style.display='flex';
+  renderInfo();
+  drawGraph();
+}
+
+function renderInfo(){
+  const d = curItem;
+  const b = d.bounds;
+  const entries = [b.outer, b.middle, b.inner].filter(Boolean);
+  const coordMap = {cartesian:'直角坐标系',polar:'极坐标',cartesian3:'直角坐标系',cylindrical:'柱坐标',spherical:'球坐标'};
+  document.getElementById('info-panel').innerHTML = `
+    <div class="info-card">
+      <div class="info-card-title">📐 积分限</div>
+      ${entries.map(e=>`<div class="bound-row"><span class="bvar">${e.var}</span><span class="brange">[${e.lower}, ${e.upper}]</span></div>`).join('')}
+    </div>
+    <div class="info-card">
+      <div class="info-card-title">🌐 坐标系</div>
+      <div class="desc-text" style="color:var(--purple);font-family:monospace">${coordMap[d.coord]||d.coord}</div>
+    </div>
+    <div class="info-card">
+      <div class="info-card-title">📝 几何描述</div>
+      <div class="desc-text">${d.region}</div>
+    </div>
+    ${d.result?`<div class="info-card"><div class="info-card-title">✅ 积分结果</div><div class="result-box">${d.math.replace('∬_D','').replace('∭_Ω','').trim()} ${d.result}</div></div>`:''}
+    <div class="info-card">
+      <div class="info-card-title">📚 解题步骤</div>
+      ${d.steps.map((s,i)=>`<div class="step-item"><div><span class="step-num">${i+1}</span><span class="step-t">${s.t}</span></div><div class="step-c">${s.c}</div></div>`).join('')}
+    </div>
+  `;
+}
+
+// ── 绘图 ──────────────────────────────────────────
+function drawGraph(){
+  const d = curItem;
+  if(d.coord==='polar') drawPolar(d);
+  else if(d.coord==='spherical') drawSpherical(d);
+  else if(d.coord==='cylindrical') drawCylindrical(d);
+  else if(d.coord==='cartesian3') drawCartesian3(d);
+  else drawCartesian2(d);
+}
+
+function getLayout(title){
+  return{
+    paper_bgcolor:'rgba(13,17,23,0)',plot_bgcolor:'rgba(13,17,23,0)',
+    margin:{l:0,r:0,t:36,b:0},
+    title:{text:title||'',font:{color:'#8b949e',size:12,family:'Microsoft YaHei'},x:.5},
+    scene:{
+      bgcolor:'rgba(0,0,0,0)',
+      xaxis:{title:{text:'x',font:{color:'#58a6ff'}},color:'#58a6ff',gridcolor:'#21262d',zerolinecolor:'#30363d',showbackground:true,backgroundcolor:'rgba(31,39,54,0.5)'},
+      yaxis:{title:{text:'y',font:{color:'#3fb950'}},color:'#3fb950',gridcolor:'#21262d',zerolinecolor:'#30363d',showbackground:true,backgroundcolor:'rgba(20,45,30,0.4)'},
+      zaxis:{title:{text:'z',font:{color:'#bc8cff'}},color:'#bc8cff',gridcolor:'#21262d',zerolinecolor:'#30363d',showbackground:true,backgroundcolor:'rgba(35,20,55,0.3)'},
+      camera:{eye:{x:1.6,y:1.4,z:1.2}},aspectmode:'cube'
+    },showlegend:false
+  };
+}
+
+function linspace(a,b,n){const r=[];for(let i=0;i<n;i++)r.push(a+(b-a)*i/(n-1));return r;}
+function se(e,x,y){
+  if(!e)return 0;
+  try{const s=String(e).replace(/π|pi/gi,'Math.PI').replace(/sqrt\(/gi,'Math.sqrt(').replace(/\^/g,'**').replace(/(\d)(x|y|r)/g,'$1*$2');
+  return Function('"use strict";const x='+x+',y='+y+',r='+Math.sqrt(x*x+y*y)+';return ('+s+')')();}catch(ex){return 0;}
+}
+function sv(e){
+  if(!e)return 0;
+  try{const s=String(e).replace(/π|pi/gi,'Math.PI').replace(/sqrt\(/gi,'Math.sqrt(').replace(/\^/g,'**');return Function('"use strict";return ('+s+')')();}catch(ex){return 0;}
+}
+
+function drawCartesian2(d){
+  const b=d.bounds,ov=b.outer,iv=b.inner;
+  const x0=sv(ov.lower),x1=sv(ov.upper)||1;
+  const N=40,M=20,xs=linspace(x0,x1,N),traces=[];
+  if(layerOn.floor){
+    const Xf=[],Yf=[],Zf=[];
+    xs.forEach(x=>{const y0=se(iv.lower,x,0),y1=se(iv.upper,x,0),ys=linspace(y0,y1,M);Xf.push(ys.map(()=>x));Yf.push(ys);Zf.push(ys.map(()=>0));});
+    traces.push({type:'surface',x:Xf,y:Yf,z:Zf,opacity:0.5,colorscale:[[0,'#0a2a4a'],[1,'#1565c0']],showscale:false,hoverinfo:'skip'});
+  }
+  if(layerOn.surf){
+    const Xs=[],Ys=[],Zs=[];
+    xs.forEach(x=>{const y0=se(iv.lower,x,0),y1=se(iv.upper,x,0),ys=linspace(y0,y1,M);Xs.push(ys.map(()=>x));Ys.push(ys);Zs.push(ys.map(y=>Math.max(0,se(d.expr,x,y))));});
+    traces.push({type:'surface',x:Xs,y:Ys,z:Zs,opacity:opacity,colorscale:[[0,'#0d2b50'],[0.4,'#1565c0'],[0.8,'#2196f3'],[1,'#64b5f6']],showscale:false});
+  }
+  if(layerOn.bound){
+    const bx=[],by=[],bz=[];
+    xs.forEach(x=>{bx.push(x);by.push(se(iv.lower,x,0));bz.push(0);});bx.push(null);by.push(null);bz.push(null);
+    xs.forEach(x=>{bx.push(x);by.push(se(iv.upper,x,0));bz.push(0);});
+    traces.push({type:'scatter3d',mode:'lines',x:bx,y:by,z:bz,line:{color:'#ff7b72',width:6},hoverinfo:'skip'});
+  }
+  Plotly.react('plotly-div',traces,getLayout(d.math),{responsive:true,displayModeBar:false});
+}
+
+function drawPolar(d){
+  const b=d.bounds;
+  const rMax=sv(b.outer.upper)||1;
+  const tMin=sv(b.inner.lower)||0, tMax=sv(b.inner.upper)||Math.PI*2;
+  const N=60,rs=linspace(0,rMax,N),ts=linspace(tMin,tMax,N),traces=[];
+  if(layerOn.floor){
+    const Xp=[],Yp=[],Zp=[];
+    rs.forEach(r=>{Xp.push(ts.map(t=>r*Math.cos(t)));Yp.push(ts.map(t=>r*Math.sin(t)));Zp.push(ts.map(()=>0));});
+    traces.push({type:'surface',x:Xp,y:Yp,z:Zp,opacity:0.45,colorscale:[[0,'#0a2a4a'],[1,'#1565c0']],showscale:false,hoverinfo:'skip'});
+  }
+  if(layerOn.surf){
+    const Xs=[],Ys=[],Zs=[];
+    rs.forEach(r=>{
+      Xs.push(ts.map(t=>r*Math.cos(t)));Ys.push(ts.map(t=>r*Math.sin(t)));
+      Zs.push(ts.map(t=>{try{const x=r*Math.cos(t),y=r*Math.sin(t);const s=String(d.expr).replace(/π|pi/gi,'Math.PI').replace(/sqrt\(/gi,'Math.sqrt(').replace(/\^/g,'**');return Math.max(0,Function('"use strict";const r='+r+',x='+x+',y='+y+';return ('+s+')')());}catch(e){return r;}}));
+    });
+    traces.push({type:'surface',x:Xs,y:Ys,z:Zs,opacity:opacity,colorscale:[[0,'#0d2b50'],[0.5,'#1976d2'],[1,'#64b5f6']],showscale:false});
+  }
+  if(layerOn.bound){
+    traces.push({type:'scatter3d',mode:'lines',x:ts.map(t=>rMax*Math.cos(t)),y:ts.map(t=>rMax*Math.sin(t)),z:ts.map(()=>0),line:{color:'#ff7b72',width:7},hoverinfo:'skip'});
+    if(Math.abs(tMax-tMin)<2*Math.PI-0.01){
+      traces.push({type:'scatter3d',mode:'lines',x:[0,rMax*Math.cos(tMin)],y:[0,rMax*Math.sin(tMin)],z:[0,0],line:{color:'#ff7b72',width:5},hoverinfo:'skip'});
+      traces.push({type:'scatter3d',mode:'lines',x:[0,rMax*Math.cos(tMax)],y:[0,rMax*Math.sin(tMax)],z:[0,0],line:{color:'#ff7b72',width:5},hoverinfo:'skip'});
+    }
+  }
+  Plotly.react('plotly-div',traces,getLayout(d.math),{responsive:true,displayModeBar:false});
+}
+
+function drawSpherical(d){
+  const b=d.bounds;
+  const rhoMax=sv(b.outer.upper)||1;
+  const phiMax=sv(b.middle.upper)||Math.PI;
+  const N=50,phis=linspace(0,phiMax,N),thetas=linspace(0,2*Math.PI,N),traces=[];
+  if(layerOn.surf){
+    const Xs=[],Ys=[],Zs=[];
+    phis.forEach(phi=>{Xs.push(thetas.map(t=>rhoMax*Math.sin(phi)*Math.cos(t)));Ys.push(thetas.map(t=>rhoMax*Math.sin(phi)*Math.sin(t)));Zs.push(thetas.map(()=>rhoMax*Math.cos(phi)));});
+    traces.push({type:'surface',x:Xs,y:Ys,z:Zs,opacity:opacity,colorscale:[[0,'#0d2b50'],[0.4,'#1565c0'],[0.8,'#42a5f5'],[1,'#90caf9']],showscale:false});
+  }
+  if(layerOn.floor && phiMax<=Math.PI/2+0.1){
+    const rs=linspace(0,rhoMax*Math.sin(phiMax),30),Xd=[],Yd=[],Zd=[];
+    rs.forEach(r=>{Xd.push(thetas.map(t=>r*Math.cos(t)));Yd.push(thetas.map(t=>r*Math.sin(t)));Zd.push(thetas.map(()=>0));});
+    traces.push({type:'surface',x:Xd,y:Yd,z:Zd,opacity:0.35,colorscale:[[0,'#0a2240'],[1,'#1a4a7a']],showscale:false,hoverinfo:'skip'});
+  }
+  if(layerOn.bound){
+    traces.push({type:'scatter3d',mode:'lines',x:thetas.map(t=>rhoMax*Math.sin(phiMax)*Math.cos(t)),y:thetas.map(t=>rhoMax*Math.sin(phiMax)*Math.sin(t)),z:thetas.map(()=>rhoMax*Math.cos(phiMax)),line:{color:'#ff7b72',width:6},hoverinfo:'skip'});
+    traces.push({type:'scatter3d',mode:'lines',x:[0,0],y:[0,0],z:[0,rhoMax*1.1],line:{color:'#bc8cff',width:4},hoverinfo:'skip'});
+  }
+  if(phiMax>Math.PI/4){
+    const coneR=rhoMax*Math.sin(Math.PI/4),coneH=rhoMax*Math.cos(Math.PI/4);
+    const cTs=linspace(0,2*Math.PI,40);
+    traces.push({type:'scatter3d',mode:'lines',x:cTs.map(t=>coneR*Math.cos(t)),y:cTs.map(t=>coneR*Math.sin(t)),z:cTs.map(()=>coneH),line:{color:'#f0883e',width:4},hoverinfo:'skip'});
+  }
+  const layout=getLayout(d.math);layout.scene.camera={eye:{x:1.4,y:1.2,z:1.0}};
+  Plotly.react('plotly-div',traces,layout,{responsive:true,displayModeBar:false});
+}
+
+function drawCylindrical(d){
+  const b=d.bounds;
+  const rMax=sv(b.outer.upper)||1;
+  const zLow=sv(b.inner.lower)||0, zHigh=sv(b.inner.upper)||1;
+  const N=50,rs=linspace(0,rMax,N),thetas=linspace(0,2*Math.PI,N),traces=[];
+  if(layerOn.floor){
+    const Xb=[],Yb=[],Zb=[];
+    rs.forEach(r=>{Xb.push(thetas.map(t=>r*Math.cos(t)));Yb.push(thetas.map(t=>r*Math.sin(t)));Zb.push(thetas.map(()=>zLow));});
+    traces.push({type:'surface',x:Xb,y:Yb,z:Zb,opacity:0.45,colorscale:[[0,'#0a2a4a'],[1,'#1565c0']],showscale:false,hoverinfo:'skip'});
+  }
+  if(layerOn.surf){
+    // 侧面
+    const zs=linspace(zLow,zHigh,20);
+    const Xs=[],Ys=[],Zss=[];
+    zs.forEach(z=>{
+      const rz = String(b.inner.lower).includes('r') ? null : rMax;
+      Xs.push(thetas.map(t=>rMax*Math.cos(t)));Ys.push(thetas.map(t=>rMax*Math.sin(t)));Zss.push(thetas.map(()=>z));
+    });
+    traces.push({type:'surface',x:Xs,y:Ys,z:Zss,opacity:opacity,colorscale:[[0,'#0d2b50'],[0.5,'#1565c0'],[1,'#64b5f6']],showscale:false});
+    // 顶面
+    const Xt=[],Yt=[],Zt=[];
+    rs.forEach(r=>{
+      Xt.push(thetas.map(t=>r*Math.cos(t)));Yt.push(thetas.map(t=>r*Math.sin(t)));
+      Zt.push(thetas.map(t=>{
+        try{const s=String(b.inner.upper).replace(/π|pi/gi,'Math.PI').replace(/sqrt\(/gi,'Math.sqrt(').replace(/\^/g,'**').replace(/r/g,String(r));
+        return Function('"use strict";return ('+s+')')();}catch(e){return zHigh;}
+      }));
+    });
+    traces.push({type:'surface',x:Xt,y:Yt,z:Zt,opacity:opacity,colorscale:[[0,'#0d2b50'],[0.5,'#1976d2'],[1,'#64b5f6']],showscale:false});
+  }
+  if(layerOn.bound){
+    traces.push({type:'scatter3d',mode:'lines',x:thetas.map(t=>rMax*Math.cos(t)),y:thetas.map(t=>rMax*Math.sin(t)),z:thetas.map(()=>zLow),line:{color:'#ff7b72',width:6},hoverinfo:'skip'});
+    traces.push({type:'scatter3d',mode:'lines',x:thetas.map(t=>rMax*Math.cos(t)),y:thetas.map(t=>rMax*Math.sin(t)),z:thetas.map(()=>zHigh),line:{color:'#ff7b72',width:6},hoverinfo:'skip'});
+  }
+  Plotly.react('plotly-div',traces,getLayout(d.math),{responsive:true,displayModeBar:false});
+}
+
+function drawCartesian3(d){
+  const b=d.bounds;
+  const x0=sv(b.outer.lower),x1=sv(b.outer.upper)||1;
+  const y0=sv(b.middle.lower),y1=sv(b.middle.upper)||1;
+  const z0=sv(b.inner.lower),z1=sv(b.inner.upper)||1;
+  const N=20,traces=[];
+  const xs=linspace(x0,x1,N),ys=linspace(y0,y1,N);
+  const faces=[
+    {d:'z',v:z0,c:'#0a2a4a'},{d:'z',v:z1,c:'#0d2b50'},
+    {d:'x',v:x0,c:'#0f3060'},{d:'x',v:x1,c:'#0a2840'},
+    {d:'y',v:y0,c:'#102050'},{d:'y',v:y1,c:'#0c2038'}
+  ];
+  if(layerOn.floor){
+    faces.forEach(f=>{
+      let Xf=[],Yf=[],Zf=[];
+      const zs=linspace(z0,z1,N);
+      if(f.d==='z'){xs.forEach(x=>{Xf.push([...ys]);Yf.push(ys.map(()=>x));Zf.push(ys.map(()=>f.v));});}
+      else if(f.d==='x'){ys.forEach(y=>{Xf.push(zs.map(()=>f.v));Yf.push(zs.map(()=>y));Zf.push([...zs]);});}
+      else{xs.forEach(x=>{Xf.push(zs.map(()=>x));Yf.push(zs.map(()=>f.v));Zf.push([...zs]);});}
+      traces.push({type:'surface',x:Xf,y:Yf,z:Zf,opacity:0.35,colorscale:[[0,f.c],[1,f.c]],showscale:false,hoverinfo:'skip'});
+    });
+  }
+  if(layerOn.bound){
+    const ex=[x0,x1,x1,x0,x0,null,x0,x1,x1,x0,x0,null,x0,x0,null,x1,x1,null,x0,x0,null,x1,x1];
+    const ey=[y0,y0,y1,y1,y0,null,y0,y0,y1,y1,y0,null,y0,y0,null,y0,y0,null,y1,y1,null,y1,y1];
+    const ez=[z0,z0,z0,z0,z0,null,z1,z1,z1,z1,z1,null,z0,z1,null,z0,z1,null,z0,z1,null,z0,z1];
+    traces.push({type:'scatter3d',mode:'lines',x:ex,y:ey,z:ez,line:{color:'#ff7b72',width:5},hoverinfo:'skip'});
+  }
+  Plotly.react('plotly-div',traces,getLayout(d.math),{responsive:true,displayModeBar:false});
+}
+
+function toggleLayer(name){
+  layerOn[name]=!layerOn[name];
+  document.getElementById('cb-'+name).classList.toggle('on',layerOn[name]);
+  if(curItem)drawGraph();
+}
+function setOp(v){opacity=parseFloat(v);if(curItem)drawGraph();}
+function resetCam(){Plotly.relayout('plotly-div',{'scene.camera':{eye:{x:1.6,y:1.4,z:1.2}}});}
+
+window.addEventListener('resize',()=>{if(curItem)Plotly.Plots.resize(document.getElementById('plotly-div'));});
+
+renderList();
+</script>
+</body>
+</html>
